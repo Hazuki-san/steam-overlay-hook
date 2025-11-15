@@ -1,7 +1,7 @@
 ### steam-overlay-hook
-Hijack Steam's GameOverlayRenderer to render with DirectX11.
+DirectX11 hook that displays a stylish system clock overlay in Steam games.
 
-Displays a stylish system clock overlay with real-time updates in the top-right corner of Steam games.
+This hook creates a real-time clock overlay in the top-right corner of DirectX 11 games. Uses MinHook for reliable function hooking that works across Steam updates (no hardcoded offsets!).
 
 ## Features
 - Real-time clock display (HH:MM:SS) in cyan color with 2x font scale
@@ -72,20 +72,38 @@ Displays a stylish system clock overlay with real-time updates in the top-right 
 
 ## Building from Source
 
+**Prerequisites:**
+- Visual Studio 2019 or later
+- Windows SDK
+- DirectX SDK (usually included with Windows SDK)
+
+**Build Steps:**
+
 ### For 64-bit (x64) games:
 1. Open `SteamOverlay/SteamOverlay.sln` in Visual Studio
-2. Ensure all dependencies are installed (Windows SDK, DirectX SDK)
+2. Add all MinHook source files to the project:
+   - Right-click the project → Add → Existing Item
+   - Navigate to `SteamOverlay/SteamOverlay/SteamOverlay/` and add:
+     - `MinHook.h`
+     - `buffer.c`, `buffer.h`
+     - `hook.c`
+     - `trampoline.c`, `trampoline.h`
+     - `hde/hde64.c`, `hde/hde64.h`, `hde/table64.h` (for x64)
 3. Set configuration to **Release** and platform to **x64**
 4. Build the solution
 5. The output DLL will be in `SteamOverlay/x64/Release/SteamOverlay.dll`
 
 ### For 32-bit (x86) games:
-1. Open the same solution in Visual Studio
+1. Follow steps 1-2 above, but for hde files add:
+   - `hde/hde32.c`, `hde/hde32.h`, `hde/table32.h` (for x86) instead
 2. Set configuration to **Release** and platform to **x86** (or Win32)
 3. Build the solution
 4. The output DLL will be in `SteamOverlay/Release/SteamOverlay.dll` or `SteamOverlay/x86/Release/SteamOverlay.dll`
 
-**Note:** Most modern games use 64-bit, but older games may require the 32-bit version. Build both for maximum compatibility.
+**Note:**
+- Most modern games use 64-bit, but older games may require the 32-bit version. Build both for maximum compatibility.
+- The project now uses MinHook for reliable DirectX 11 hooking that works across Steam updates
+- MinHook files are included in the repository under `SteamOverlay/SteamOverlay/SteamOverlay/`
 
 ## Customization
 You can customize the clock appearance by modifying `Hooks.cpp`:

@@ -5,8 +5,11 @@
 #include <vector>
 #include <algorithm>
 #include <d3d11.h>
+#include <dxgi.h>
 #include <minwindef.h>
 #include <intrin.h>
+
+#include "MinHook.h"
 
 #include "ImGui/imgui.h"
 #include "ImGui/imgui_impl_dx11.h"

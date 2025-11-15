@@ -4,9 +4,8 @@
 class SteamOverlaySetup
 {
 public:
-	std::uintptr_t m_gameOverlayRenderer;
-	std::uintptr_t* m_presentOriginal;
-	std::uintptr_t* m_resizeBuffersOriginal;
+	void* m_presentTarget;
+	void* m_resizeBuffersTarget;
 
 public:
 	bool Setup();
