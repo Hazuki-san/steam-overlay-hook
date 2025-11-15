@@ -2,10 +2,12 @@
 // @id              steam-overlay-clock
 // @name            Steam Overlay System Clock
 // @description     Adds a stylish system clock overlay to Steam games using DirectX11
-// @version         1.0
+// @version         1.1
 // @author          Hazuki-san
 // @github          https://github.com/Hazuki-san/steam-overlay-hook
 // @include         *
+// @architecture    x86_64
+// @architecture    x86
 // @compilerOptions -lversion
 // ==/WindhawkMod==
 
@@ -14,13 +16,14 @@
 # Steam Overlay System Clock
 
 This Windhawk mod automatically injects a stylish system clock overlay into Steam games
-that use DirectX 11.
+that use DirectX 11. Supports both 32-bit and 64-bit games.
 
 ## Features
 - Real-time clock display (HH:MM:SS) in cyan color
 - Date display with day of week, month, day, and year
 - Semi-transparent background positioned in top-right corner
 - Borderless, non-intrusive design
+- Automatic architecture detection (x86/x64)
 
 ## Requirements
 - The compiled SteamOverlay.dll must be placed in the mod's directory
@@ -28,13 +31,17 @@ that use DirectX 11.
 - Steam overlay must be enabled for the game
 
 ## Installation
-1. Build the SteamOverlay project to generate SteamOverlay.dll
-2. Copy SteamOverlay.dll to: %LocalAppData%\Programs\Windhawk\Engine\Mods\steam-overlay-clock\
+1. Build the SteamOverlay project for both x86 and x64 architectures
+2. Copy the DLLs to:
+   - x64: %LocalAppData%\Programs\Windhawk\Engine\Mods\steam-overlay-clock\x64\SteamOverlay.dll
+   - x86: %LocalAppData%\Programs\Windhawk\Engine\Mods\steam-overlay-clock\x86\SteamOverlay.dll
 3. Enable this mod in Windhawk
 4. Launch any Steam game with DX11
 
+The mod will automatically load the correct DLL based on the game's architecture.
+
 ## Configuration
-You can specify a custom DLL path in the settings below.
+You can specify custom DLL paths for both architectures in the settings below.
 
 ## Notes
 - This mod only works with DirectX 11 games
@@ -45,10 +52,15 @@ You can specify a custom DLL path in the settings below.
 
 // ==WindhawkModSettings==
 /*
-- dllPath: ""
-  $name: Custom DLL Path
+- dllPathx64: ""
+  $name: Custom DLL Path (x64)
   $description: >-
-    Optional: Specify a custom path to SteamOverlay.dll.
+    Optional: Specify a custom path to the 64-bit SteamOverlay.dll.
+    Leave empty to use the default location in the mod's directory.
+- dllPathx86: ""
+  $name: Custom DLL Path (x86)
+  $description: >-
+    Optional: Specify a custom path to the 32-bit SteamOverlay.dll.
     Leave empty to use the default location in the mod's directory.
 */
 // ==/WindhawkModSettings==
@@ -58,11 +70,21 @@ You can specify a custom DLL path in the settings below.
 #include <shlobj.h>
 
 struct {
-    PCWSTR dllPath;
+    PCWSTR dllPathx64;
+    PCWSTR dllPathx86;
 } settings;
 
 HMODULE g_injectedModule = nullptr;
 bool g_attemptedInjection = false;
+
+bool Is64BitProcess()
+{
+#ifdef _WIN64
+    return true;
+#else
+    return false;
+#endif
+}
 
 std::wstring GetModulePath()
 {
@@ -70,7 +92,14 @@ std::wstring GetModulePath()
     if (SHGetFolderPathW(nullptr, CSIDL_LOCAL_APPDATA, nullptr, 0, path) == S_OK)
     {
         std::wstring modPath = path;
-        modPath += L"\\Programs\\Windhawk\\Engine\\Mods\\steam-overlay-clock\\SteamOverlay.dll";
+        modPath += L"\\Programs\\Windhawk\\Engine\\Mods\\steam-overlay-clock\\";
+
+        // Append architecture-specific subdirectory
+        if (Is64BitProcess())
+            modPath += L"x64\\SteamOverlay.dll";
+        else
+            modPath += L"x86\\SteamOverlay.dll";
+
         return modPath;
     }
     return L"";
@@ -83,11 +112,15 @@ bool InjectDLL()
 
     g_attemptedInjection = true;
 
-    // Get DLL path
+    // Get DLL path based on architecture
     std::wstring dllPath;
-    if (settings.dllPath && settings.dllPath[0] != L'\0')
+    bool is64Bit = Is64BitProcess();
+
+    // Check for custom path first
+    PCWSTR customPath = is64Bit ? settings.dllPathx64 : settings.dllPathx86;
+    if (customPath && customPath[0] != L'\0')
     {
-        dllPath = settings.dllPath;
+        dllPath = customPath;
     }
     else
     {
@@ -96,7 +129,7 @@ bool InjectDLL()
 
     if (dllPath.empty())
     {
-        Wh_Log(L"Failed to determine DLL path");
+        Wh_Log(L"Failed to determine DLL path for %s architecture", is64Bit ? L"x64" : L"x86");
         return false;
     }
 
@@ -104,7 +137,7 @@ bool InjectDLL()
     DWORD fileAttrib = GetFileAttributesW(dllPath.c_str());
     if (fileAttrib == INVALID_FILE_ATTRIBUTES)
     {
-        Wh_Log(L"DLL not found at: %s", dllPath.c_str());
+        Wh_Log(L"DLL not found at: %s (architecture: %s)", dllPath.c_str(), is64Bit ? L"x64" : L"x86");
         return false;
     }
 
@@ -112,11 +145,12 @@ bool InjectDLL()
     g_injectedModule = LoadLibraryW(dllPath.c_str());
     if (!g_injectedModule)
     {
-        Wh_Log(L"Failed to load DLL: %s (Error: %d)", dllPath.c_str(), GetLastError());
+        Wh_Log(L"Failed to load DLL: %s (Error: %d, architecture: %s)",
+               dllPath.c_str(), GetLastError(), is64Bit ? L"x64" : L"x86");
         return false;
     }
 
-    Wh_Log(L"Successfully injected DLL: %s", dllPath.c_str());
+    Wh_Log(L"Successfully injected %s DLL: %s", is64Bit ? L"x64" : L"x86", dllPath.c_str());
     return true;
 }
 
@@ -213,9 +247,14 @@ void Wh_ModSettingsChanged()
 
 BOOL Wh_ModSettingsStringSet(PCWSTR name, PCWSTR value)
 {
-    if (wcscmp(name, L"dllPath") == 0)
+    if (wcscmp(name, L"dllPathx64") == 0)
     {
-        settings.dllPath = value;
+        settings.dllPathx64 = value;
+        return TRUE;
+    }
+    else if (wcscmp(name, L"dllPathx86") == 0)
+    {
+        settings.dllPathx86 = value;
         return TRUE;
     }
     return FALSE;
