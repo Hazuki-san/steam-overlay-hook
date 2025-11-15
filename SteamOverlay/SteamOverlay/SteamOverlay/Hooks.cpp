@@ -50,7 +50,67 @@ HRESULT __stdcall Hooks::PresentHook(IDXGISwapChain* swapChain, UINT syncInterva
 	ImGui_ImplWin32_NewFrame();
 	ImGui::NewFrame();
 
-	ImGui::ShowDemoWindow();
+	// Stylish System Clock
+	{
+		// Get current time
+		SYSTEMTIME st;
+		GetLocalTime(&st);
+
+		// Create a stylish clock window
+		ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration |
+										ImGuiWindowFlags_AlwaysAutoResize |
+										ImGuiWindowFlags_NoSavedSettings |
+										ImGuiWindowFlags_NoFocusOnAppearing |
+										ImGuiWindowFlags_NoNav;
+
+		const float PAD = 10.0f;
+		const ImGuiViewport* viewport = ImGui::GetMainViewport();
+		ImVec2 work_pos = viewport->WorkPos;
+		ImVec2 work_size = viewport->WorkSize;
+		ImVec2 window_pos, window_pos_pivot;
+
+		// Position in top-right corner
+		window_pos.x = work_pos.x + work_size.x - PAD;
+		window_pos.y = work_pos.y + PAD;
+		window_pos_pivot.x = 1.0f;
+		window_pos_pivot.y = 0.0f;
+
+		ImGui::SetNextWindowPos(window_pos, ImGuiCond_Always, window_pos_pivot);
+		ImGui::SetNextWindowBgAlpha(0.75f); // Slightly transparent background
+
+		if (ImGui::Begin("SystemClock", nullptr, window_flags))
+		{
+			// Format time string
+			char timeStr[32];
+			sprintf_s(timeStr, "%02d:%02d:%02d", st.wHour, st.wMinute, st.wSecond);
+
+			// Format date string
+			const char* weekdays[] = { "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat" };
+			const char* months[] = { "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+									 "Jul", "Aug", "Sep", "Oct", "Nov", "Dec" };
+			char dateStr[64];
+			sprintf_s(dateStr, "%s, %s %02d, %d",
+					  weekdays[st.wDayOfWeek],
+					  months[st.wMonth - 1],
+					  st.wDay,
+					  st.wYear);
+
+			// Display with styling
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.2f, 0.8f, 1.0f, 1.0f)); // Cyan color for time
+			ImGui::SetWindowFontScale(2.0f);
+			ImGui::Text("%s", timeStr);
+			ImGui::SetWindowFontScale(1.0f);
+			ImGui::PopStyleColor();
+
+			ImGui::Spacing();
+
+			// Display date
+			ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.8f, 0.8f, 0.8f, 1.0f)); // Light gray for date
+			ImGui::Text("%s", dateStr);
+			ImGui::PopStyleColor();
+		}
+		ImGui::End();
+	}
 
 	ImGui::Render();
 
